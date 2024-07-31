@@ -1,5 +1,6 @@
 import pygame
 import sys
+import time
 from gerador import gera_numeros
 
 # Inicializa o Pygame
@@ -25,6 +26,15 @@ y_pos = altura // 2
 quadrado = 50
 altura_plataforma = 20
 largura_plataforma = 100
+vidas = 3
+tempo_jogo = 60  # 1 minuto
+inicio_tempo = None
+estado_jogo = "inicio"
+pontuacao = 0
+q1 = (x_pos - quadrado // 2, y_pos - 2 * quadrado)
+q2 = (x_pos - quadrado // 2, y_pos - quadrado)
+q3 = (x_pos - quadrado // 2, y_pos)
+
 
 # Função para criar o cenário
 def desenha_jogo(numeros, quadrados_visiveis):
@@ -42,6 +52,14 @@ def desenha_jogo(numeros, quadrados_visiveis):
     
     texto = fonte.render(str(numeros[3]), True, preto)
     tela.blit(texto, (10, 10))
+    
+    # Desenha vidas e tempo restante
+    texto_vidas = fonte.render(f"VIDAS: {vidas}", True, preto)
+    tela.blit(texto_vidas, (largura - 150, 10))
+    tempo_restante = max(0, tempo_jogo - int(time.time() - inicio_tempo))
+    texto_tempo = fonte.render(f"TEMPO: {tempo_restante}s", True, preto)
+    tela.blit(texto_tempo, (largura - 150, 50))
+    
     pygame.display.flip()
 
 # Função para verificar se o clique foi dentro de um quadrado
@@ -57,38 +75,60 @@ def verifica_clique(pos, quadrados_visiveis):
 def reiniciar_jogo():
     return gera_numeros(), [True, True, True]
 
+# Função para desenhar a tela de início
+def desenha_tela_inicio():
+    tela.fill(branco)
+    texto = fonte.render("CLIQUE PARA INICIAR", True, preto)
+    tela.blit(texto, (largura // 2 - texto.get_width() // 2, altura // 2 - texto.get_height() // 2))
+    pygame.display.flip()
+
+# Função para desenhar a tela de perdeu
+def desenha_tela_fim():
+    tela.fill(branco)
+    texto = fonte.render(f"FIM DE JOGO! SCORE: {pontuacao}", True, preto)
+    tela.blit(texto, (largura // 2 - texto.get_width() // 2, altura // 2 - texto.get_height() // 2))
+    pygame.display.flip()
+
 # inicialização
 fonte = pygame.font.Font(None, 36)
 numeros, quadrados_visiveis = reiniciar_jogo()
 
-# Coord quadrados
-q1 = (x_pos - quadrado // 2, y_pos - 2 * quadrado)
-q2 = (x_pos - quadrado // 2, y_pos - quadrado)
-q3 = (x_pos - quadrado // 2, y_pos)
-
-# Jogo
+# Loop do jogo
 running = True
 while running:
     for event in pygame.event.get():
         if event.type == pygame.QUIT:
             running = False
         elif event.type == pygame.MOUSEBUTTONDOWN:
-            clique = verifica_clique(event.pos, quadrados_visiveis)
-            if clique != -1:
-                if clique == numeros[4]:  
-                    mensagem = "Certo!"
-                else:
-                    mensagem = "Errado!"
-                quadrados_visiveis[clique] = False
-                desenha_jogo(numeros, quadrados_visiveis)
-                texto = fonte.render(mensagem, True, preto)
-                quadrados = [q1, q2, q3]
-                tela.blit(texto, (quadrados[clique][0], quadrados[clique][1]))
-                pygame.display.flip()
-                pygame.time.wait(1000)
-                numeros, quadrados_visiveis = reiniciar_jogo()
+            if estado_jogo == "inicio":
+                estado_jogo = "jogo"
+                inicio_tempo = time.time()
+            elif estado_jogo == "jogo":
+                clique = verifica_clique(event.pos, quadrados_visiveis)
+                if clique != -1:
+                    if clique == numeros[4]:  
+                        mensagem = "CORRETO!"
+                        pontuacao += 1
+                    else:
+                        mensagem = "ERRRADO!"
+                        vidas -= 1
+                    quadrados_visiveis[clique] = False
+                    desenha_jogo(numeros, quadrados_visiveis)
+                    texto = fonte.render(mensagem, True, preto)
+                    quadrados = [q1, q2, q3]
+                    tela.blit(texto, (quadrados[clique][0], quadrados[clique][1]))
+                    pygame.display.flip()
+                    pygame.time.wait(1000)
+                    numeros, quadrados_visiveis = reiniciar_jogo()
     
-    desenha_jogo(numeros, quadrados_visiveis)
+    if estado_jogo == "inicio":
+        desenha_tela_inicio()
+    elif estado_jogo == "jogo":
+        desenha_jogo(numeros, quadrados_visiveis)
+        if vidas <= 0 or time.time() - inicio_tempo >= tempo_jogo:
+            estado_jogo = "fim"
+    elif estado_jogo == "fim":
+        desenha_tela_fim()
 
 pygame.quit()
 sys.exit()
